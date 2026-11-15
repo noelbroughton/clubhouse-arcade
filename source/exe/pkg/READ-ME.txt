@@ -1,0 +1,51 @@
+CLUBHOUSE ARCADE
+================
+
+To play
+  1. Double-click ClubhouseArcade.exe.
+  2. A black window flashes for a moment, then the arcade opens in your
+     browser. Nothing else stays open on screen.
+  3. Click "Full screen", pick a game, add players, click "Tee off".
+
+To quit
+  Close the browser tab. The program stops by itself a few seconds later.
+
+First time only
+  - Windows may say "Windows protected your PC" because the program is
+    not signed. Click "More info", then "Run anyway".
+  - If Windows Firewall asks, click "Allow".
+
+No launch monitor? Press T in a game to hit shots with the mouse.
+
+Connect a launch monitor
+  The arcade accepts shots in GSPro Open Connect format, so anything that
+  can send to GSPro can send here. Point it at address 127.0.0.1 and
+  port 921 (GSPro closed) or 9210 (any time).
+  The pill at the bottom-right of a game turns green when it connects.
+
+Connect with rela (works with many launch monitors)
+  rela is a separate program that links launch monitors to simulators.
+    Guide:    https://docs.rela.golf/rela/user-guide/
+    Install:  https://docs.rela.golf/rela/installation/
+    Help:     https://discord.gg/mXJayKrv4H
+  1. Install your launch monitor's own software and check it reads shots.
+  2. Install rela. Tick your launch monitor and select GSPro as a
+     simulator output.
+  3. Close GSPro. Start Clubhouse Arcade.
+  4. In rela set Device to your launch monitor and Simulator to GSPro,
+     then click Search under Device.
+  5. If the pill is not green, click Connect under Simulator in rela.
+  The Help button on the arcade's menu has the full steps.
+
+Good to know
+  - Works without internet. Only the title font needs it.
+  - Use Chrome or Edge.
+  - If the picture stutters: Settings > Graphics > Low.
+  - Leaderboards are saved in the browser on this PC.
+  - "What's new" on the menu lists the changes in each version.
+  - "Suggestions" on the menu opens a form to send in your ideas.
+
+If nothing opens
+  Run it from a Command Prompt as:  ClubhouseArcade.exe --window
+  That keeps a window open and shows what went wrong. A log is also kept in
+  %LOCALAPPDATA%\ClubhouseArcade\log.txt

@@ -243,7 +243,7 @@ GAMES.push({
         const p = pos(Math.max(0, clock - Store.d.bbLag)), d = Math.abs(p - .5), g = GW[lv - 1], y = YW[lv - 1];
         if (d <= g) { q = 1 - .08 * d / g; qn = 'Green'; } else if (d <= g + y) { q = lerp(.86, .62, (d - g) / y); qn = 'Yellow'; } else { q = lerp(.56, .3, (d - g - y) / Math.max(.01, .5 - g - y)); qn = 'Red'; }
         dot.style.bottom = p * 100 + '%'; $('meterTxt').textContent = qn + ' · ' + Math.round(q * 100) + '%';
-        const c = simCarry(s), carry = Math.hypot(c.x, c.z) * YD, ground = s.vla < 8, spray = clamp(s.hla * 3.2, -70, 70), fence = BB.fence(clamp(spray, -45, 45)); let ft = Math.min(carry * 2.5 * q * q * (ground ? .5 : 1), 560);
+        const c = simCarry(s), carry = Math.hypot(c.x, c.z) * YD, ground = s.vla < 8, spray = clamp(s.hla * (Store.d.aim && Store.d.aim.on ? 1 : 3.2), -70, 70), fence = BB.fence(clamp(spray, -45, 45)); let ft = Math.min(carry * 2.5 * q * q * (ground ? .5 : 1), 560);
         const foul = Math.abs(spray) > 45, hr = !foul && !ground && ft >= fence, th = spray * PI / 180, dm = ft * .3048, lx = Math.sin(th) * dm, lz = -Math.cos(th) * dm; let out = null, kind;
         if (!foul && !hr) for (const f of F) if (hd(lx, lz, f.hx, f.hz) < (f.hz < -60 ? CR[lv - 1] : CR[lv - 1] * .5) + (ground ? 0 : 0)) { out = f; break; }
         kind = foul ? 'foul' : hr ? 'hr' : out ? (ground ? 'gout' : 'out') : ground ? (ft >= 110 ? 'single' : 'gout') : ft / fence >= .68 ? 'double' : ft >= 130 ? 'single' : 'pop';

@@ -13,7 +13,7 @@ const PCOL = ['#ff5d73', '#3fa7ff', '#ffc93c', '#44d68a', '#b98bff', '#ff9a3c'];
 
 /* ---------- storage (per browser; survives restarts on the sim PC) ---------- */
 const Store = {
-  d: { players: [{ name: 'Player 1', c: 0, b: 1 }, { name: 'Player 2', c: 1, b: 1 }], boards: {}, len: 1, sound: true, boost: 1.5, pad: null, relay: '', gfx: 'high', putt: 1, vol: 1, music: true, jr: 1.9, tune: 'auto', bbLag: 0 },
+  d: { players: [{ name: 'Player 1', c: 0, b: 1 }, { name: 'Player 2', c: 1, b: 1 }], boards: {}, len: 1, sound: true, boost: 1.5, pad: null, relay: '', gfx: 'high', putt: 1, vol: 1, music: true, jr: 1.9, tune: 'auto', bbLag: 0, aim: { on: true, w: 10, d: 11 } },
   load() { try { const s = JSON.parse(localStorage.getItem('clubhouseArcade.v2')); if (s && s.players) Object.assign(this.d, s); } catch (e) { } for (const p of this.d.players) { if (typeof p.b !== 'number') p.b = p.jr ? (this.d.jr || 1.9) : 1; delete p.jr; } if (this.d.music === false) { this.d.tune = 'off'; this.d.music = true; } },
   save() { try { localStorage.setItem('clubhouseArcade.v2', JSON.stringify(this.d)); } catch (e) { } }
 };
@@ -292,6 +292,16 @@ const G_A = .5 * 1.225 * .001432 / .04593;
 function aero(v, w, wd, out) { const sp = v.length() || .001, S = w * .02135 / sp, cd = .24 + .2 * Math.min(S, .6) - .05 * smooth(55, 76, sp), cl = Math.min(.32, .12 + .6 * S) * smooth(4, 14, sp), k = G_A * sp; out.crossVectors(wd, v).multiplyScalar(k * cl).addScaledVector(v, -k * cd); out.y -= 9.81; return out; }
 function shotVectors(s, v, wd) { const a = s.vla * PI / 180, h = s.hla * PI / 180, sp = s.speed * .44704, ax = (s.axis || 0) * PI / 180; v.set(Math.sin(h) * Math.cos(a) * sp, Math.sin(a) * sp, -Math.cos(h) * Math.cos(a) * sp); wd.set(Math.cos(h) * Math.cos(ax), -Math.sin(ax), Math.sin(h) * Math.cos(ax)); return (s.spin || 0) * 2 * PI / 60; }
 function simCarry(s) { const v = new V3(), wd = new V3(), a = new V3(), p = new V3(0, .02, 0); let w = shotVectors(s, v, wd), t = 0; const dt = 1 / 120; while (t < 15) { aero(v, w, wd, a); v.addScaledVector(a, dt); p.addScaledVector(v, dt); w *= Math.exp(-dt / 30); t += dt; if (p.y <= 0) break; } return p; }
+/* Screen-matched aim. The game camera sits behind the tee and shows a wider view than the real screen covers,
+   so a launch monitor's direction is mapped to the point the player sees on screen at that angle. */
+const aimGeom = () => { const A = Store.d.aim || {}, real = Math.atan(A.w / 2 / A.d), virt = Math.atan(Math.tan(E.cam.fov * PI / 360) * E.cam.aspect); return { real, virt, k: Math.tan(virt) / Math.tan(real) }; };
+function screenAim(s) {
+  const A = Store.d.aim; if (!A || !A.on) return s.hla; const g = aimGeom(), u = Math.tan(s.hla * PI / 180) / Math.tan(g.real), hc = Math.atan(u * Math.tan(g.virt));
+  const cx = Cam.hp.x, cz = Cam.hp.z, yaw = Math.atan2(Cam.hl.x - cx, -(Cam.hl.z - cz)), a = yaw + hc, dx = Math.sin(a), dz = -Math.cos(a);
+  const c = simCarry(Object.assign({}, s, { hla: 0, axis: 0 })), D = clamp(Math.hypot(c.x, c.z), 6, 400), b = cx * dx + cz * dz, t = -b + Math.sqrt(Math.max(0, b * b - (cx * cx + cz * cz - D * D)));
+  return Math.atan2(cx + dx * t, -(cz + dz * t)) * 180 / PI;
+}
+function aimNeeded(x, z) { const A = Store.d.aim, tee = Math.atan2(x, -z) * 180 / PI; if (!A || !A.on) return tee; const g = aimGeom(), cx = Cam.hp.x, cz = Cam.hp.z, yaw = Math.atan2(Cam.hl.x - cx, -(Cam.hl.z - cz)), hc = Math.atan2(x - cx, -(z - cz)) - yaw; return Math.atan(Math.tan(hc) / Math.tan(g.virt) * Math.tan(g.real)) * 180 / PI; }
 function padShot(u, pw) { const speed = lerp(26, 172, pw); return { speed, vla: lerp(36, 11, Math.pow(pw, .75)), hla: u * 13, spin: clamp(11500 - speed * 54, 2300, 9500), axis: 0 }; }
 function solveShot(x, z, loft) { const d = Math.hypot(x, z), hla = Math.atan2(x, -z) * 180 / PI; let lo = 0, hi = 1; for (let i = 0; i < 22; i++) { const m = (lo + hi) / 2, s = padShot(0, m); if (loft) s.vla = loft; const c = simCarry(s); (Math.hypot(c.x, c.z) < d ? lo = m : hi = m); } const s = padShot(0, (lo + hi) / 2); if (loft) s.vla = loft; s.hla = hla; return s; }
 const Ball = {

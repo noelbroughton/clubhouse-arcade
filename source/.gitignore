@@ -1,0 +1,3 @@
+# build output from build.sh
+artifact/
+dist/index.html

@@ -30,7 +30,7 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 !define MUI_UNICON "build\icon.ico"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Clubhouse"
-!define MUI_WELCOMEPAGE_TEXT "This installs Clubhouse, the launcher for your golf simulator.$\r$\n$\r$\nPick Clubhouse Arcade or GSPro from one screen. Clubhouse starts and closes the right programs (GSPro, NeoTrack, Rela) for each one.$\r$\n$\r$\nNo administrator rights are needed."
+!define MUI_WELCOMEPAGE_TEXT "This installs Clubhouse, the launcher for your golf simulator.$\r$\n$\r$\nPick Clubhouse Arcade or GSPro from one screen. Clubhouse Arcade is included and keeps updating its games by itself. Clubhouse starts and closes the right programs (GSPro, NeoTrack, Rela) for each one.$\r$\n$\r$\nNo administrator rights are needed."
 !define MUI_FINISHPAGE_RUN "$INSTDIR\Clubhouse.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Start Clubhouse now"
 
@@ -44,10 +44,17 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 Section "Install"
   ; close a running copy so its files can be replaced
   nsExec::Exec 'taskkill /IM Clubhouse.exe /T /F'
+  nsExec::Exec 'taskkill /IM ClubhouseArcade.exe /T /F'
   Sleep 800
   SetOutPath "$INSTDIR"
   RMDir /r "$INSTDIR\resources"
   File /r "dist-app\win-unpacked\*.*"
+  ; Clubhouse Arcade is its own program with its own game updates; Clubhouse runs this copy
+  ; unless Settings points at another ClubhouseArcade.exe.
+  SetOutPath "$INSTDIR\ClubhouseArcade"
+  File "..\exe\pkg\ClubhouseArcade.exe"
+  File "..\exe\pkg\READ-ME.txt"
+  SetOutPath "$INSTDIR"
   WriteUninstaller "$INSTDIR\Uninstall Clubhouse.exe"
 
   CreateShortcut "$DESKTOP\Clubhouse.lnk" "$INSTDIR\Clubhouse.exe" "" "$INSTDIR\Clubhouse.exe" 0
@@ -67,6 +74,7 @@ SectionEnd
 
 Section "Uninstall"
   nsExec::Exec 'taskkill /IM Clubhouse.exe /T /F'
+  nsExec::Exec 'taskkill /IM ClubhouseArcade.exe /T /F'
   Sleep 800
   Delete "$DESKTOP\Clubhouse.lnk"
   Delete "$SMPROGRAMS\Clubhouse.lnk"

@@ -1,3 +1,17 @@
 # build output from build.sh
 artifact/
 dist/index.html
+# tools and outputs of exe/make.sh
+test/
+exe/node_modules/
+exe/package.json
+exe/package-lock.json
+exe/app.js
+exe/sea.blob
+exe/sea-config.json
+exe/www/
+exe/update/
+exe/ClubhouseArcade.exe
+exe/arcade-linux
+exe/ClubhouseArcade.zip
+exe/pkg/ClubhouseArcade.exe

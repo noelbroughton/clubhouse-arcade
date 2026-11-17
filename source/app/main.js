@@ -1,8 +1,9 @@
 'use strict';
 /*
   Clubhouse — launcher for the golf simulator.
-  Shows two tiles: Clubhouse Arcade (runs inside this window, with its shot relay)
-  and GSPro (started from its own install). Settings say which programs to start
+  Shows two tiles: Clubhouse Arcade and GSPro. Both are separate programs with
+  their own updates: the launcher starts ClubhouseArcade.exe hidden and shows the
+  arcade inside this window, and starts GSPro from its own install. Settings say which programs to start
   or close alongside each one, so NeoTrack, Rela and GSPro never fight over the
   cameras or port 921.
 */
@@ -10,7 +11,6 @@ const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron')
 const path = require('path'), fs = require('fs'), cp = require('child_process'), http = require('http');
 
 const WIN = process.platform === 'win32';
-const ARCADE_DIR = path.join(__dirname, 'arcade');
 const ICON = path.join(__dirname, 'build', WIN ? 'icon.ico' : 'icon.png');
 
 app.commandLine.appendSwitch('ignore-gpu-blocklist');          // sim PCs often have GPUs Chromium is shy about
@@ -21,7 +21,7 @@ if (!app.requestSingleInstanceLock()) { app.quit(); }
 const CFG_FILE = () => path.join(app.getPath('userData'), 'config.json');
 const DEFAULTS = {
   gspro: { path: '', start: [], close: [] },   // start: full paths; close: program names like rela.exe
-  arcade: { start: [], close: [] },
+  arcade: { path: '', start: [], close: [], version: '' },   // path: ClubhouseArcade.exe
   afterGSPro: 'minimize',                      // minimize | quit | stay
   fullscreen: true,
   last: 'arcade'
@@ -97,43 +97,41 @@ async function startPrograms(list) {
 }
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
-/* ---------------- the arcade's relay ---------------- */
-let relay = null, relayUrl = '', relayOut = '';
+/* ---------------- Clubhouse Arcade (its own program, ClubhouseArcade.exe) ---------------- */
 function getJSON(port, p, method = 'GET') {
   return new Promise(res => {
     const r = http.request({ host: '127.0.0.1', port, path: p, method, timeout: 700 }, s => { let b = ''; s.on('data', c => b += c); s.on('end', () => { try { res(JSON.parse(b)); } catch (e) { res(null); } }); });
     r.on('error', () => res(null)); r.on('timeout', () => { r.destroy(); res(null); }); r.end();
   });
 }
-// an old ClubhouseArcade.exe left running would hold ports 921 and 9210, so ask it to quit
-async function stopStrayRelays() {
-  for (let p = 8080; p < 8090; p++) {
-    if (relay && relayUrl.endsWith(':' + p)) continue;
-    const i = await getJSON(p, '/api/info'); if (i && i.app === 'clubhouse-arcade') { log('asking the arcade on port ' + p + ' to quit'); await getJSON(p, '/api/quit', 'POST'); await wait(600); }
-  }
+async function findRunningArcade() {
+  for (let p = 8080; p < 8090; p++) { const i = await getJSON(p, '/api/info'); if (i && i.app === 'clubhouse-arcade') return { port: p, info: i }; }
+  return null;
 }
-function startRelay() {
-  if (relay && relayUrl) return Promise.resolve(relayUrl);
-  return new Promise((resolve, reject) => {
-    relayOut = ''; relayUrl = '';
-    const env = Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1', ARCADE_DATA: path.join(app.getPath('userData'), 'arcade') });
-    relay = cp.spawn(process.execPath, [path.join(ARCADE_DIR, 'arcade-relay.js'), '--no-open', '--http', '8080'], { env, cwd: ARCADE_DIR, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    const me = relay; let settled = false;
-    const t = setTimeout(() => { if (!settled) { settled = true; reject(new Error('The arcade did not start in time.\n' + relayOut.slice(-600))); } }, 15000);
-    const onData = d => {
-      const s = d.toString(); relayOut = (relayOut + s).slice(-20000);
-      s.split(/\r?\n/).filter(x => x.trim()).forEach(x => log('[arcade] ' + x.trim()));
-      const m = /running at (http:\/\/localhost:\d+)/.exec(relayOut);
-      if (m && !settled) { settled = true; clearTimeout(t); relayUrl = m[1]; resolve(relayUrl); }
-    };
-    relay.stdout.on('data', onData); relay.stderr.on('data', onData);
-    relay.on('exit', code => { log('arcade relay stopped (' + code + ')'); if (relay === me) { relay = null; relayUrl = ''; } if (!settled) { settled = true; clearTimeout(t); reject(new Error('The arcade stopped while starting.\n' + relayOut.slice(-600))); } });
-  });
+function arcadeCandidates() {
+  const home = app.getPath('home'), L = process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local');
+  const list = [process.env.CLUBHOUSE_ARCADE_EXE,
+    path.join(path.dirname(process.execPath), 'ClubhouseArcade', 'ClubhouseArcade.exe'),   // copy installed with Clubhouse
+    path.join(L, 'Programs', 'ClubhouseArcade', 'ClubhouseArcade.exe'), 'C:\\ClubhouseArcade\\ClubhouseArcade.exe'];
+  for (const d of ['desktop', 'downloads', 'documents']) { let dir; try { dir = app.getPath(d); } catch (e) { continue; } list.push(path.join(dir, 'ClubhouseArcade', 'ClubhouseArcade.exe'), path.join(dir, 'ClubhouseArcade.exe')); }
+  return list.filter(Boolean);
 }
-function stopRelay() {
-  if (!relay) return Promise.resolve();
-  const r = relay; relay = null; relayUrl = '';
-  return new Promise(res => { const t = setTimeout(() => { try { r.kill('SIGKILL'); } catch (e) { } res(); }, 2500); r.once('exit', () => { clearTimeout(t); res(); }); try { r.kill(); } catch (e) { clearTimeout(t); res(); } });
+function findArcade() { for (const p of arcadeCandidates()) if (exists(p)) return p; return ''; }
+function arcadePath() { if (exists(cfg.arcade.path)) return cfg.arcade.path; const f = findArcade(); if (f) { cfg.arcade.path = f; saveCfg(); } return f; }
+
+// starts ClubhouseArcade.exe without its browser tab; it serves the games on localhost:8080
+async function startArcade() {
+  const run = await findRunningArcade(); if (run) return run;
+  const exe = arcadePath(); if (!exe) return { setup: true };
+  try { const c = cp.spawn(exe, ['--no-open'], { cwd: path.dirname(exe), detached: true, stdio: 'ignore', windowsHide: true }); c.on('error', e => log('could not start the arcade: ' + e.message)); c.unref(); log('started ' + exe); }
+  catch (e) { return { error: 'Clubhouse Arcade could not be started: ' + e.message }; }
+  for (let i = 0; i < 40; i++) { await wait(500); const r = await findRunningArcade(); if (r) return r; }
+  return { error: 'Clubhouse Arcade did not start. Try running ' + exe + ' --window to see why.' };
+}
+// asks every running copy to quit, which frees ports 921 and 9210 for GSPro and Rela
+async function stopArcade() {
+  let n = 0; for (let p = 8080; p < 8090; p++) { const i = await getJSON(p, '/api/info'); if (i && i.app === 'clubhouse-arcade') { await getJSON(p, '/api/quit', 'POST'); n++; } }
+  if (n) { log('asked ' + n + ' arcade(s) to quit'); await wait(700); }
 }
 
 /* ---------------- window ---------------- */
@@ -153,6 +151,7 @@ function createWindow() {
     if (i.type !== 'keyDown') return;
     if (i.key === 'F11') { e.preventDefault(); win.setFullScreen(!win.isFullScreen()); }
     if (i.key === 'F12' && i.control && i.shift) win.webContents.toggleDevTools();
+    if (i.key === 'F10' && screen === 'arcade') { e.preventDefault(); goHome(); }   // back to the launcher from any arcade version
   });
   win.webContents.on('render-process-gone', (e, d) => log('page stopped: ' + d.reason));
   win.on('closed', () => { win = null; });
@@ -167,25 +166,24 @@ async function state() {
   return {
     version: app.getVersion(), platform: process.platform, cfg,
     gspro: { path: gp, found: exists(gp), running: gsproRunning(set) },
-    arcade: { version: arcadeVersion(), running: !!relay },
+    arcade: { path: cfg.arcade.path, found: exists(cfg.arcade.path) || !!findArcade(), version: cfg.arcade.version, running: set.has('clubhousearcade.exe') },
     names: [...set].filter(n => [...GSPRO_NAMES, ...cfg.gspro.start.map(exeName), ...cfg.arcade.start.map(exeName), ...cfg.gspro.close, ...cfg.arcade.close].map(exeName).includes(n)),
     fullscreen: win ? win.isFullScreen() : cfg.fullscreen
   };
 }
-function arcadeVersion() { try { return (/<meta name="arcade-version" content="([\d.]+)"/.exec(fs.readFileSync(path.join(ARCADE_DIR, 'index.html'), 'utf8').slice(0, 4000)) || [])[1] || ''; } catch (e) { return ''; } }
 
 ipcMain.handle('state', () => state());
 ipcMain.handle('save', (e, c) => {
   const clean = l => Array.isArray(l) ? l.map(String).filter(Boolean).slice(0, 12) : [];
   cfg.gspro = { path: String(c.gspro.path || ''), start: clean(c.gspro.start), close: clean(c.gspro.close).map(exeName) };
-  cfg.arcade = { start: clean(c.arcade.start), close: clean(c.arcade.close).map(exeName) };
+  cfg.arcade = { path: String(c.arcade.path || ''), start: clean(c.arcade.start), close: clean(c.arcade.close).map(exeName), version: cfg.arcade.version };
   cfg.afterGSPro = ['minimize', 'quit', 'stay'].includes(c.afterGSPro) ? c.afterGSPro : 'minimize';
   cfg.fullscreen = !!c.fullscreen; if (win && win.isFullScreen() !== cfg.fullscreen) win.setFullScreen(cfg.fullscreen);
   saveCfg(); return state();
 });
 ipcMain.handle('browse', async (e, what) => {
   const r = await dialog.showOpenDialog(win, {
-    title: what === 'gspro' ? 'Choose GSPro (GSPLauncher.exe or GSPro.exe)' : 'Choose a program',
+    title: what === 'gspro' ? 'Choose GSPro (GSPLauncher.exe or GSPro.exe)' : what === 'arcade' ? 'Choose ClubhouseArcade.exe' : 'Choose a program',
     defaultPath: what === 'gspro' && WIN ? 'C:\\GSProV1' : undefined,
     filters: WIN ? [{ name: 'Programs', extensions: ['exe', 'bat', 'cmd', 'lnk'] }] : [], properties: ['openFile']
   });
@@ -195,25 +193,28 @@ ipcMain.handle('browse', async (e, what) => {
   return p;
 });
 ipcMain.handle('find-gspro', () => findGSPro());
+ipcMain.handle('find-arcade', () => findArcade());
 ipcMain.handle('open-log', () => shell.openPath(LOG_FILE()));
 
 ipcMain.handle('play-arcade', async (e, opts = {}) => {
   const steps = [];
+  if (!arcadePath()) return { setup: true };
   const set = await running();
   if (gsproRunning(set) && !opts.ignoreGSPro) return { ask: 'gspro' };
   if (opts.closeGSPro) { const c = await closePrograms([...GSPRO_NAMES, cfg.gspro.path].filter(Boolean)); if (c.length) steps.push('Closed GSPro'); }
   const closed = await closePrograms(cfg.arcade.close); if (closed.length) steps.push('Closed ' + closed.join(', '));
-  await stopStrayRelays();
-  let url; try { url = await startRelay(); } catch (x) { log(x.message); return { error: x.message }; }
+  const r = await startArcade(); if (r.setup || r.error) { log(r.error || 'arcade not found'); return r; }
+  if (r.info && r.info.version) cfg.arcade.version = r.info.version;
   const s = await startPrograms(cfg.arcade.start); if (s.started.length) steps.push('Started ' + s.started.join(', '));
   cfg.last = 'arcade'; saveCfg(); screen = 'arcade';
-  setTimeout(() => { if (win && screen === 'arcade') win.loadURL(url + '/?app=1'); }, 350);
+  const url = 'http://localhost:' + r.port + '/?app=1';
+  setTimeout(() => { if (win && screen === 'arcade') win.loadURL(url); }, 350);
   return { ok: true, steps };
 });
 ipcMain.handle('play-gspro', async () => {
   if (!exists(cfg.gspro.path)) { const f = findGSPro(); if (f) { cfg.gspro.path = f; saveCfg(); } else return { setup: true }; }
   const steps = [];
-  await stopRelay(); await stopStrayRelays();
+  await stopArcade();
   const closed = await closePrograms(cfg.gspro.close); if (closed.length) steps.push('Closed ' + closed.join(', '));
   const now = await running();
   if (!gsproRunning(now)) { if (!startProgram(cfg.gspro.path)) return { error: 'GSPro could not be started from ' + cfg.gspro.path }; steps.push('Started GSPro'); }
@@ -223,7 +224,8 @@ ipcMain.handle('play-gspro', async () => {
   setTimeout(() => { if (!win) return; if (cfg.afterGSPro === 'quit') app.quit(); else if (cfg.afterGSPro === 'minimize') win.minimize(); }, 2500);
   return { ok: true, steps };
 });
-ipcMain.handle('home', async () => { await stopRelay(); if (win) { if (cfg.fullscreen && !win.isFullScreen()) win.setFullScreen(true); showLauncher(); } return true; });
+async function goHome() { const was = screen === 'arcade'; screen = 'launcher'; if (win) { if (cfg.fullscreen && !win.isFullScreen()) win.setFullScreen(true); showLauncher(); } if (was) await stopArcade(); return true; }
+ipcMain.handle('home', () => goHome());
 ipcMain.handle('quit', () => app.quit());
 ipcMain.handle('toggle-full', () => { if (win) win.setFullScreen(!win.isFullScreen()); return win && win.isFullScreen(); });
 
@@ -233,8 +235,9 @@ app.whenReady().then(() => {
   try { fs.writeFileSync(LOG_FILE(), ''); } catch (e) { }
   log('Clubhouse ' + app.getVersion() + ' starting');
   if (!cfg.gspro.path) { const f = findGSPro(); if (f) { cfg.gspro.path = f; saveCfg(); log('found GSPro at ' + f); } }
+  if (!exists(cfg.arcade.path)) { const f = findArcade(); if (f) { cfg.arcade.path = f; saveCfg(); log('found Clubhouse Arcade at ' + f); } }
   createWindow();
 });
 app.on('window-all-closed', () => app.quit());
 let quitting = false;
-app.on('before-quit', e => { if (relay && !quitting) { quitting = true; e.preventDefault(); stopRelay().then(() => app.quit()); } });
+app.on('before-quit', e => { if (screen === 'arcade' && !quitting) { quitting = true; e.preventDefault(); stopArcade().then(() => app.quit()); } });

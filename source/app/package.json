@@ -1,7 +1,7 @@
 {
   "name": "clubhouse-launcher",
   "productName": "Clubhouse",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Clubhouse launcher: Clubhouse Arcade and GSPro for the golf simulator",
   "author": "Noel Broughton",
   "main": "main.js",
@@ -10,11 +10,9 @@
     "start": "electron ."
   },
   "devDependencies": {
-    "cannon": "0.6.2",
     "electron": "44.10.1",
     "electron-builder": "26.18.0",
-    "resedit": "3.1.0",
-    "three": "0.128.0"
+    "resedit": "3.1.0"
   },
   "build": {
     "appId": "com.noelbroughton.clubhouse",
@@ -29,7 +27,6 @@
       "preload.js",
       "package.json",
       "launcher/**",
-      "arcade/**",
       "build/icon.ico",
       "build/icon.png"
     ],

@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('clubhouseApp', {
   save: c => call('save', c),
   browse: what => call('browse', what),
   findGSPro: () => call('find-gspro'),
+  findArcade: () => call('find-arcade'),
   playArcade: o => call('play-arcade', o),
   playGSPro: () => call('play-gspro'),
   toggleFull: () => call('toggle-full'),

@@ -23,7 +23,7 @@ async function refresh() {
   const c = S.cfg, g = S.gspro, run = n => S.names.includes(n.toLowerCase());
   const chip = (id, txt, cls) => { const e = $(id); e.textContent = txt; e.className = 'chip' + (cls ? ' ' + cls : ''); };
   if (!g.found) chip('#s-gspro', 'Set up GSPro in Settings', 'warn'); else if (g.running) chip('#s-gspro', 'Running', 'run'); else chip('#s-gspro', 'Ready');
-  chip('#s-arcade', 'Version ' + (S.arcade.version || '?'));
+  const a = S.arcade; if (!a.found) chip('#s-arcade', 'Set up Clubhouse Arcade in Settings', 'warn'); else if (a.running) chip('#s-arcade', 'Running', 'run'); else chip('#s-arcade', a.version ? 'Games ' + a.version : 'Ready');
   const extra = (start, close) => [start.length ? 'Starts ' + start.map(base).join(', ') : '', close.length ? 'Closes ' + close.join(', ') + ' first' : ''].filter(Boolean).join(' · ');
   $('#x-arcade').textContent = extra(c.arcade.start, c.arcade.close) || (S.names.some(n => /^rela/.test(n)) ? 'Rela is running' : '');
   $('#x-gspro').textContent = extra(c.gspro.start, c.gspro.close);
@@ -49,21 +49,22 @@ async function play(k, opts) {
   if (busy) return; busy = true; let hold = false;
   try {
     if (k === 'arcade') {
-      showBusy('Starting Clubhouse Arcade', ['Starting the shot relay…']);
+      showBusy('Starting Clubhouse Arcade', ['Starting ClubhouseArcade.exe…']);
       let r = await A.playArcade(opts || {});
       if (r.ask === 'gspro') {
         hideBusy();
         const i = await ask('GSPro is still open', 'GSPro may be using your launch monitor and port 921. Close it before starting the arcade?', ['Close GSPro', 'Keep it open', 'Cancel']);
         if (i === 2) return;
-        showBusy('Starting Clubhouse Arcade', [i === 0 ? 'Closing GSPro…' : 'Starting the shot relay…']);
+        showBusy('Starting Clubhouse Arcade', [i === 0 ? 'Closing GSPro…' : 'Starting ClubhouseArcade.exe…']);
         r = await A.playArcade({ ignoreGSPro: true, closeGSPro: i === 0 });
       }
+      if (r.setup) { hideBusy(); const i = await ask('Where is Clubhouse Arcade?', 'Clubhouse could not find ClubhouseArcade.exe on this PC. Choose it in Settings.', ['Open Settings', 'Cancel']); if (i === 0) openSettings(); return; }
       if (r.error) { hideBusy(); await ask('The arcade could not start', r.error, ['OK']); return; }
       showBusy('Starting Clubhouse Arcade', (r.steps || []).concat('Loading the games…'));
       hold = true; return; // the window switches to the arcade
     }
     if (k === 'gspro') {
-      showBusy('Starting GSPro', ['Stopping the arcade relay…']);
+      showBusy('Starting GSPro', ['Closing Clubhouse Arcade…']);
       const r = await A.playGSPro();
       if (r.setup) { hideBusy(); const i = await ask('Where is GSPro?', 'Clubhouse could not find GSPro on this PC. Choose GSPLauncher.exe or GSPro.exe in Settings.', ['Open Settings', 'Cancel']); if (i === 0) openSettings(); return; }
       if (r.error) { hideBusy(); await ask('GSPro could not start', r.error, ['OK']); return; }
@@ -81,6 +82,7 @@ function closeSettings() { $('#settings').hidden = true; refresh(); }
 function getL(key) { const [a, b] = key.split('.'); return draft[a][b]; }
 function paintSettings() {
   const p = $('#gp-path'); p.textContent = draft.gspro.path || 'Not set'; p.classList.toggle('bad', !draft.gspro.path);
+  const q = $('#ar-path'); q.textContent = draft.arcade.path || 'Not set'; q.classList.toggle('bad', !draft.arcade.path);
   $$('[data-list]').forEach(ul => { const l = getL(ul.dataset.list); ul.innerHTML = l.length ? l.map((x, i) => `<li><span title="${esc(x)}">${esc(ul.dataset.list.endsWith('close') ? x : x)}</span><button type="button" data-rm="${i}" aria-label="Remove">×</button></li>`).join('') : '<li class="empty">None</li>'; });
   $$('[data-seg]').forEach(s => { const v = String(draft[s.dataset.seg]); s.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); });
 }
@@ -91,6 +93,8 @@ $('#settings').addEventListener('click', async e => {
   if (t.dataset.a === 'log') return A.openLog();
   if (t.dataset.a === 'gp-browse') { const p = await A.browse('gspro'); if (p) { draft.gspro.path = p; await saveSettings(); } return; }
   if (t.dataset.a === 'gp-find') { const p = await A.findGSPro(); if (p) { draft.gspro.path = p; await saveSettings(); } else await ask('GSPro not found', 'Use Browse to choose GSPLauncher.exe or GSPro.exe.', ['OK']); return; }
+  if (t.dataset.a === 'ar-browse') { const p = await A.browse('arcade'); if (p) { draft.arcade.path = p; await saveSettings(); } return; }
+  if (t.dataset.a === 'ar-find') { const p = await A.findArcade(); if (p) { draft.arcade.path = p; await saveSettings(); } else await ask('Clubhouse Arcade not found', 'Use Browse to choose ClubhouseArcade.exe.', ['OK']); return; }
   if (t.dataset.add) { const p = await A.browse('program'); if (!p) return; const l = getL(t.dataset.add), v = t.dataset.add.endsWith('close') ? base(p) : p; if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v); return saveSettings(); }
   if (t.dataset.rm !== undefined) { getL(t.closest('ul').dataset.list).splice(+t.dataset.rm, 1); return saveSettings(); }
   const seg = t.closest('[data-seg]'); if (seg) { const k = seg.dataset.seg; draft[k] = k === 'fullscreen' ? t.dataset.v === 'true' : t.dataset.v; return saveSettings(); }

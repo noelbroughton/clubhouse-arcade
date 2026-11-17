@@ -1,6 +1,6 @@
 <title>Clubhouse Arcade</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<meta name="arcade-version" content="1.5.1">
+<meta name="arcade-version" content="1.6.0">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Titan+One&family=Outfit:wght@400;600;800&display=swap">
 <style>
 /* Layout: a full-screen 3D stage with a TV-distance HUD; menus are a marquee shelf of game posters over the live scene. */
@@ -83,6 +83,9 @@ textarea{font:inherit;color:inherit;box-sizing:border-box;width:100%;min-width:0
 #meterDot{position:absolute;left:-18%;width:136%;height:calc(var(--u)*1.1);margin-bottom:calc(var(--u)*-.55);border-radius:99px;background:#fff;box-shadow:0 0 0 3px #130f2b,0 0 1em rgba(255,255,255,.9)}
 #meter b{font-weight:800;font-size:calc(var(--u)*1.3);white-space:nowrap}
 .cat.sports b,.cat-h.sports{color:var(--gold)}
+.pzs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:calc(var(--u)*.5) calc(var(--u)*1.6)}@media(max-width:760px){.pzs{grid-template-columns:minmax(0,1fr)}}
+.prow.pz{grid-template-columns:auto minmax(0,.8fr) minmax(0,1.2fr)}.pz .dot{width:1.6em;height:1.6em}.pn{font-weight:800;font-size:calc(var(--u)*1.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.res-hint{color:var(--gold);font-weight:800;font-size:calc(var(--u)*1.4)}.res-hint.nudge{animation:nudge .4s}@keyframes nudge{20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
 .shelf.minigolf h2{color:var(--teal)}
 .chip{padding:.5em 1.1em;border-radius:99px;background:rgba(19,15,43,.78);border:2px solid rgba(255,255,255,.16);font-weight:600;font-size:calc(var(--u)*1.15)}
 button.chip:hover{border-color:var(--gold)}
@@ -214,7 +217,7 @@ nav{display:flex;flex-wrap:wrap;gap:calc(var(--u)*.7)}
   </div>
   <div class="h-toast" id="hToast"><b></b><span></span></div>
   <div class="h-stats plate" id="hStats"></div>
-  <div class="h-foot"><span style="display:flex;gap:calc(var(--u)*.6);flex-wrap:wrap"><button class="chip" id="bPause" type="button">Menu</button><button class="chip" id="bMus" type="button" data-a="musNext">Music</button></span><div class="aim plate" id="aimBar" hidden><button type="button" data-a="aimL" aria-label="Aim left">◀</button><span><b>Aim</b><i id="aimTxt"></i></span><button type="button" data-a="aimR" aria-label="Aim right">▶</button></div><span style="display:flex;gap:calc(var(--u)*.6);flex-wrap:wrap;justify-content:flex-end"><span class="chip pill" id="hReady" hidden></span><span class="chip pill" id="hConn">Demo mode</span></span></div>
+  <div class="h-foot"><span style="display:flex;gap:calc(var(--u)*.6);flex-wrap:wrap"><button class="chip" id="bPause" type="button">Menu</button><button class="chip" id="bBoost" type="button" data-a="boostMenu">Boost</button><button class="chip" id="bMus" type="button" data-a="musNext">Music</button></span><div class="aim plate" id="aimBar" hidden><button type="button" data-a="aimL" aria-label="Aim left">◀</button><span><b>Aim</b><i id="aimTxt"></i></span><button type="button" data-a="aimR" aria-label="Aim right">▶</button></div><span style="display:flex;gap:calc(var(--u)*.6);flex-wrap:wrap;justify-content:flex-end"><span class="chip pill" id="hReady" hidden></span><span class="chip pill" id="hConn">Demo mode</span></span></div>
 </div>
 <div id="meter" class="plate" hidden><div id="meterBar"><i id="meterDot"></i></div><b id="meterTxt">Timing</b></div>
 <div class="h-banner" id="hBanner"><div><small>Up next</small><span></span></div></div>

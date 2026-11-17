@@ -13,7 +13,7 @@ const PCOL = ['#ff5d73', '#3fa7ff', '#ffc93c', '#44d68a', '#b98bff', '#ff9a3c'];
 
 /* ---------- storage (per browser; survives restarts on the sim PC) ---------- */
 const Store = {
-  d: { players: [{ name: 'Player 1', c: 0, b: 1 }, { name: 'Player 2', c: 1, b: 1 }], boards: {}, len: 1, sound: true, boost: 1.5, pad: null, relay: '', gfx: 'high', putt: 1, vol: 1, music: true, jr: 1.9, tune: 'auto', bbLag: 0, aim: { on: true, w: 10, d: 11 } },
+  d: { players: [{ name: 'Player 1', c: 0, b: 1 }, { name: 'Player 2', c: 1, b: 1 }], boards: {}, len: 1, sound: true, boost: 1.5, pad: null, relay: '', gfx: 'high', putt: 1, vol: 1, music: true, jr: 1.9, tune: 'auto', bbLag: 0, aim: { on: true, w: 10, d: 11 }, sportLv: 0 },
   load() { try { const s = JSON.parse(localStorage.getItem('clubhouseArcade.v2')); if (s && s.players) Object.assign(this.d, s); } catch (e) { } for (const p of this.d.players) { if (typeof p.b !== 'number') p.b = p.jr ? (this.d.jr || 1.9) : 1; delete p.jr; } if (this.d.music === false) { this.d.tune = 'off'; this.d.music = true; } },
   save() { try { localStorage.setItem('clubhouseArcade.v2', JSON.stringify(this.d)); } catch (e) { } }
 };

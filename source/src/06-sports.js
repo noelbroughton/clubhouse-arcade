@@ -1,10 +1,10 @@
 /* ============ Sports: four games with five levels each ============ */
 // Each player has their own level. Score on 2 of the 3 shots in a turn and that player moves up a level next turn.
 function levelKit(match, max = 5) {
-  const lv = match.players.map(() => 1); let cur = 0, n = 0, made = 0, up = false;
+  const fix = match.level || 0, lv = match.players.map(() => fix || 1); let cur = 0, n = 0, made = 0, up = false;
   return {
     get lv() { return lv[cur]; }, begin(pi) { cur = pi; n = 0; made = 0; up = false; },
-    shot(ok) { n++; if (ok) made++; if (n >= match.spt && made >= 2 && lv[cur] < max) { lv[cur]++; up = true; setTimeout(() => Snd.coin(), 500); } },
+    shot(ok) { n++; if (ok) made++; if (!fix && n >= match.spt && made >= 2 && lv[cur] < max) { lv[cur]++; up = true; setTimeout(() => Snd.coin(), 500); } },
     sub(s) { return up && n >= match.spt ? (s ? s + ' · ' : '') + 'LEVEL UP' : s; },
     label() { return 'Level ' + lv[cur] + (n < match.spt ? ' · shot ' + (n + 1) + ' of ' + match.spt : ''); }
   };

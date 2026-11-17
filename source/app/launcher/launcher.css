@@ -72,6 +72,12 @@ footer { position: fixed; left: 0; right: 0; bottom: 0; display: flex; justify-c
 .sh-head, .sh-foot { display: flex; justify-content: space-between; align-items: center; }
 .sh-foot { margin-top: calc(var(--u)*1); }
 .saved { color: var(--green); font-size: calc(var(--u)*1.2); }
+.screens { margin-top: calc(var(--u)*1.2); padding: calc(var(--u)*1.2) calc(var(--u)*1.6); border-radius: calc(var(--u)*1); background: rgba(255,255,255,.04); border: 1px solid var(--line); display: grid; gap: calc(var(--u)*.8); }
+.scr-row { display: grid; grid-template-columns: calc(var(--u)*16) 1fr auto; gap: calc(var(--u)*1.2); align-items: center; }
+.scr-name { font-weight: 700; font-size: calc(var(--u)*1.35); }
+select { font: inherit; font-size: calc(var(--u)*1.2); color: var(--ink); background: rgba(0,0,0,.35); border: 1px solid var(--line); border-radius: calc(var(--u)*.8); padding: calc(var(--u)*.6) calc(var(--u)*1); min-width: 0; }
+select option { background: #101626; }
+.screens .note .btn { margin-left: .4em; vertical-align: middle; }
 .cols { display: grid; grid-template-columns: 1fr 1fr; gap: calc(var(--u)*4); margin-top: calc(var(--u)*.6); }
 section h3 { margin: 0 0 calc(var(--u)*.6); font-size: calc(var(--u)*1.9); color: var(--gold2); }
 .lbl { display: block; margin: calc(var(--u)*1.3) 0 calc(var(--u)*.5); font-size: calc(var(--u)*1.2); font-weight: 700; color: var(--mute); text-transform: uppercase; letter-spacing: .08em; }

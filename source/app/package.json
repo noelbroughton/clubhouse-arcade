@@ -1,7 +1,7 @@
 {
   "name": "clubhouse-launcher",
   "productName": "Clubhouse",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Clubhouse launcher: Clubhouse Arcade and GSPro for the golf simulator",
   "author": "Noel Broughton",
   "main": "main.js",

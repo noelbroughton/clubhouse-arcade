@@ -39,7 +39,7 @@
       <span class="play">Play</span>
     </button>
   </div>
-  <p class="keys"><kbd>←</kbd><kbd>→</kbd> choose &nbsp; <kbd>Enter</kbd> play &nbsp; <kbd>S</kbd> settings &nbsp; <kbd>F11</kbd> full screen &nbsp; <kbd>F10</kbd> back here from a game</p>
+  <p class="keys"><kbd>←</kbd><kbd>→</kbd> choose &nbsp; <kbd>Enter</kbd> play &nbsp; <kbd>S</kbd> settings &nbsp; <kbd>F9</kbd> next screen &nbsp; <kbd>F11</kbd> full screen &nbsp; <kbd>F10</kbd> back here from a game</p>
 </main>
 
 <footer>
@@ -71,6 +71,11 @@
 <div class="overlay" id="settings" hidden>
   <div class="sheet">
     <div class="sh-head"><h2>Settings</h2><button class="btn" type="button" data-a="close">Close</button></div>
+    <div class="screens">
+      <div class="scr-row"><span class="scr-name">Clubhouse Arcade</span><select data-scr="arcade" aria-label="Screen for Clubhouse Arcade"></select><div class="seg" data-full="arcade"><button type="button" data-v="true">Full screen</button><button type="button" data-v="false">Window</button></div></div>
+      <div class="scr-row"><span class="scr-name">This launcher</span><select data-scr="launcher" aria-label="Screen for the launcher"></select><div class="seg" data-full="launcher"><button type="button" data-v="true">Full screen</button><button type="button" data-v="false">Window</button></div></div>
+      <p class="note">GSPro picks its own screen in its settings. <button class="btn sm" type="button" data-a="identify">Show screen numbers</button> &nbsp;<kbd>F9</kbd> moves to the next screen, <kbd>F11</kbd> full screen or window.</p>
+    </div>
     <div class="cols">
       <section>
         <h3>GSPro</h3>
@@ -100,8 +105,6 @@
         <label class="lbl">Close these first</label>
         <ul class="list" data-list="arcade.close"></ul>
         <button class="btn sm" type="button" data-add="arcade.close">Add a program…</button>
-        <label class="lbl">Screen</label>
-        <div class="seg" data-seg="fullscreen"><button type="button" data-v="true">Full screen</button><button type="button" data-v="false">Window</button></div>
         <div class="tip">
           <b>NeoTrack with Rela for the arcade, NeoTrack straight into GSPro:</b>
           <ol>

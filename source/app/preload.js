@@ -12,6 +12,8 @@ contextBridge.exposeInMainWorld('clubhouseApp', {
   playArcade: o => call('play-arcade', o),
   playGSPro: () => call('play-gspro'),
   toggleFull: () => call('toggle-full'),
+  setScreen: (which, patch) => call('set-screen', which, patch),
+  identify: () => call('identify'),
   openLog: () => call('open-log'),
   quit: () => call('quit')
 });

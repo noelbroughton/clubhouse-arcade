@@ -77,13 +77,16 @@ async function play(k, opts) {
 }
 
 /* settings */
-function openSettings() { if (!S) return; draft = JSON.parse(JSON.stringify(S.cfg)); paintSettings(); $('#settings').hidden = false; $('#saved').textContent = ''; }
+async function openSettings() { try { S = await A.state(); } catch (e) { } if (!S) return; draft = JSON.parse(JSON.stringify(S.cfg)); paintSettings(); $('#settings').hidden = false; $('#saved').textContent = ''; }
 function closeSettings() { $('#settings').hidden = true; refresh(); }
 function getL(key) { const [a, b] = key.split('.'); return draft[a][b]; }
 function paintSettings() {
   const p = $('#gp-path'); p.textContent = draft.gspro.path || 'Not set'; p.classList.toggle('bad', !draft.gspro.path);
   const q = $('#ar-path'); q.textContent = draft.arcade.path || 'Not set'; q.classList.toggle('bad', !draft.arcade.path);
   $$('[data-list]').forEach(ul => { const l = getL(ul.dataset.list); ul.innerHTML = l.length ? l.map((x, i) => `<li><span title="${esc(x)}">${esc(ul.dataset.list.endsWith('close') ? x : x)}</span><button type="button" data-rm="${i}" aria-label="Remove">×</button></li>`).join('') : '<li class="empty">None</li>'; });
+  const opts = '<option value="">Main screen</option>' + (S.displays || []).map(d => `<option value="${esc(d.id)}">${esc(d.name)}</option>`).join('');
+  $$('[data-scr]').forEach(sel => { sel.innerHTML = opts; const v = S.cfg.screens[sel.dataset.scr].display; sel.value = (S.displays || []).some(d => d.id === v) ? v : ''; });
+  $$('[data-full]').forEach(sg => { const v = String(S.cfg.screens[sg.dataset.full].full); sg.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); });
   $$('[data-seg]').forEach(s => { const v = String(draft[s.dataset.seg]); s.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.v === v)); });
 }
 async function saveSettings() { S = await A.save(draft); draft = JSON.parse(JSON.stringify(S.cfg)); paintSettings(); $('#saved').textContent = 'Saved'; clearTimeout(saveSettings.t); saveSettings.t = setTimeout(() => $('#saved').textContent = '', 1800); }
@@ -91,6 +94,8 @@ $('#settings').addEventListener('click', async e => {
   const t = e.target.closest('button'); if (!t) return;
   if (t.dataset.a === 'close') return closeSettings();
   if (t.dataset.a === 'log') return A.openLog();
+  if (t.dataset.a === 'identify') return A.identify();
+  const fs = t.closest('[data-full]'); if (fs) { S = await A.setScreen(fs.dataset.full, { full: t.dataset.v === 'true' }); draft.screens = S.cfg.screens; paintSettings(); return; }
   if (t.dataset.a === 'gp-browse') { const p = await A.browse('gspro'); if (p) { draft.gspro.path = p; await saveSettings(); } return; }
   if (t.dataset.a === 'gp-find') { const p = await A.findGSPro(); if (p) { draft.gspro.path = p; await saveSettings(); } else await ask('GSPro not found', 'Use Browse to choose GSPLauncher.exe or GSPro.exe.', ['OK']); return; }
   if (t.dataset.a === 'ar-browse') { const p = await A.browse('arcade'); if (p) { draft.arcade.path = p; await saveSettings(); } return; }
@@ -98,6 +103,11 @@ $('#settings').addEventListener('click', async e => {
   if (t.dataset.add) { const p = await A.browse('program'); if (!p) return; const l = getL(t.dataset.add), v = t.dataset.add.endsWith('close') ? base(p) : p; if (!l.some(x => x.toLowerCase() === v.toLowerCase())) l.push(v); return saveSettings(); }
   if (t.dataset.rm !== undefined) { getL(t.closest('ul').dataset.list).splice(+t.dataset.rm, 1); return saveSettings(); }
   const seg = t.closest('[data-seg]'); if (seg) { const k = seg.dataset.seg; draft[k] = k === 'fullscreen' ? t.dataset.v === 'true' : t.dataset.v; return saveSettings(); }
+});
+
+$('#settings').addEventListener('change', async e => {
+  const sel = e.target.closest('[data-scr]'); if (!sel) return;
+  S = await A.setScreen(sel.dataset.scr, { display: sel.value }); draft.screens = S.cfg.screens; paintSettings(); $('#saved').textContent = 'Saved';
 });
 
 /* footer */

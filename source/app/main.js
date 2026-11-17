@@ -7,7 +7,7 @@
   or close alongside each one, so NeoTrack, Rela and GSPro never fight over the
   cameras or port 921.
 */
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, screen: Displays } = require('electron');
 const path = require('path'), fs = require('fs'), cp = require('child_process'), http = require('http');
 
 const WIN = process.platform === 'win32';
@@ -23,16 +23,22 @@ const DEFAULTS = {
   gspro: { path: '', start: [], close: [] },   // start: full paths; close: program names like rela.exe
   arcade: { path: '', start: [], close: [], version: '' },   // path: ClubhouseArcade.exe
   afterGSPro: 'minimize',                      // minimize | quit | stay
-  fullscreen: true,
+  fullscreen: true,                            // old setting, used once to fill in screens
+  screens: null,                               // { launcher: {display, label, full, bounds}, arcade: {...} }
   last: 'arcade'
 };
 let cfg = loadCfg();
 function loadCfg() {
   let c = {}; try { c = JSON.parse(fs.readFileSync(CFG_FILE(), 'utf8')); } catch (e) { }
   const m = JSON.parse(JSON.stringify(DEFAULTS));
-  for (const k of Object.keys(m)) if (c[k] !== undefined) m[k] = (typeof m[k] === 'object' && !Array.isArray(m[k])) ? Object.assign(m[k], c[k]) : c[k];
+  for (const k of Object.keys(m)) if (c[k] !== undefined) m[k] = (m[k] && typeof m[k] === 'object' && !Array.isArray(m[k])) ? Object.assign(m[k], c[k]) : c[k];
   return m;
 }
+function fixScreens() {
+  if (!cfg.screens || typeof cfg.screens !== 'object') cfg.screens = {};
+  for (const k of ['launcher', 'arcade']) { const v = cfg.screens[k] || {}; cfg.screens[k] = { display: String(v.display || ''), label: String(v.label || ''), full: v.full !== undefined ? !!v.full : cfg.fullscreen !== false, bounds: v.bounds || null }; }
+}
+fixScreens();
 function saveCfg() { try { fs.mkdirSync(path.dirname(CFG_FILE()), { recursive: true }); fs.writeFileSync(CFG_FILE(), JSON.stringify(cfg, null, 1)); } catch (e) { log('could not save settings: ' + e.message); } }
 
 const LOG_FILE = () => path.join(app.getPath('userData'), 'log.txt');
@@ -134,25 +140,85 @@ async function stopArcade() {
   if (n) { log('asked ' + n + ' arcade(s) to quit'); await wait(700); }
 }
 
-/* ---------------- window ---------------- */
-let win = null, screen = 'launcher';
+/* ---------------- window and screens ---------------- */
+// One window shows both the launcher and the arcade; each remembers its own screen and full screen / window choice.
+let win = null, screen = 'launcher', placing = Promise.resolve(), boundsTimer = null;
+const mode = () => screen === 'arcade' ? 'arcade' : 'launcher';
+function displayList() {
+  const all = Displays.getAllDisplays(), main = Displays.getPrimaryDisplay().id;
+  return all.slice().sort((a, b) => a.bounds.x - b.bounds.x || a.bounds.y - b.bounds.y).map((d, i) => ({
+    id: String(d.id), n: i + 1, label: d.label || '', primary: d.id === main,
+    size: Math.round(d.size.width * d.scaleFactor) + ' × ' + Math.round(d.size.height * d.scaleFactor),
+    name: 'Screen ' + (i + 1) + (d.label ? ' · ' + d.label : '') + ' · ' + Math.round(d.size.width * d.scaleFactor) + '×' + Math.round(d.size.height * d.scaleFactor) + (d.id === main ? ' (main)' : '')
+  }));
+}
+function pickDisplay(pref) {
+  const all = Displays.getAllDisplays();
+  return all.find(d => String(d.id) === pref.display) || (pref.label && all.find(d => d.label === pref.label)) || Displays.getPrimaryDisplay();
+}
+const onDisplay = (b, d) => { const cx = b.x + b.width / 2, cy = b.y + b.height / 2; return cx >= d.bounds.x && cx < d.bounds.x + d.bounds.width && cy >= d.bounds.y && cy < d.bounds.y + d.bounds.height; };
+function windowBounds(pref, d) {
+  const w = d.workArea; if (pref.bounds && onDisplay(pref.bounds, d)) return pref.bounds;
+  const W = Math.round(w.width * .8), H = Math.round(w.height * .8);
+  return { x: w.x + Math.round((w.width - W) / 2), y: w.y + Math.round((w.height - H) / 2), width: W, height: H };
+}
+// moves the window to the screen chosen for the launcher or the arcade
+function place(which = mode()) {
+  placing = placing.then(async () => {
+    if (!win) return;
+    const pref = cfg.screens[which], d = pickDisplay(pref);
+    if (win.isMinimized()) win.restore();
+    const here = Displays.getDisplayMatching(win.getBounds());
+    if (pref.full) {
+      if (win.isFullScreen() && here.id === d.id) return;
+      if (win.isFullScreen()) { win.setFullScreen(false); await wait(250); }
+      const c = d.workArea; win.setBounds({ x: c.x + 40, y: c.y + 40, width: Math.min(1280, c.width - 80), height: Math.min(800, c.height - 80) }); await wait(60);
+      win.setFullScreen(true);
+    } else {
+      if (win.isFullScreen()) { win.setFullScreen(false); await wait(250); }
+      win.setBounds(windowBounds(pref, d));
+    }
+  }).catch(e => log('could not place the window: ' + e.message));
+  return placing;
+}
+function choose(which, patch) { Object.assign(cfg.screens[which], patch); saveCfg(); if (which === mode()) return place(which); return Promise.resolve(); }
+function nextDisplay() {   // F9: move to the next screen and remember it
+  const list = displayList(), cur = String(Displays.getDisplayMatching(win.getBounds()).id), i = list.findIndex(d => d.id === cur), nx = list[(i + 1) % list.length];
+  const d = Displays.getAllDisplays().find(x => String(x.id) === nx.id);
+  return choose(mode(), { display: nx.id, label: d.label || '', bounds: null });
+}
+function identify() {   // big number on each screen for a few seconds
+  for (const d of displayList()) {
+    const real = Displays.getAllDisplays().find(x => String(x.id) === d.id), b = real.bounds;
+    const w = new BrowserWindow({ x: b.x + Math.round(b.width / 2) - 220, y: b.y + Math.round(b.height / 2) - 170, width: 440, height: 340, frame: false, transparent: true, alwaysOnTop: true, focusable: false, skipTaskbar: true, resizable: false, show: false, webPreferences: { sandbox: true } });
+    const html = `<html><body style="margin:0;display:grid;place-items:center;height:100vh;font-family:Segoe UI,system-ui,sans-serif;color:#fff;background:rgba(7,11,20,.88);border-radius:28px;border:4px solid #f4c55a"><div style="text-align:center"><div style="font-size:180px;font-weight:800;line-height:1">${d.n}</div><div style="font-size:22px;opacity:.8">${d.size.replace(/[<>&]/g, '')}${d.primary ? ' · main' : ''}</div></div></body></html>`;
+    w.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(html)); w.once('ready-to-show', () => w.showInactive());
+    setTimeout(() => { try { w.close(); } catch (e) { } }, 3000);
+  }
+}
+
 function createWindow() {
+  const pref = cfg.screens.launcher, d = pickDisplay(pref), start = pref.full ? { ...d.workArea } : windowBounds(pref, d);
   win = new BrowserWindow({
-    width: 1600, height: 900, minWidth: 960, minHeight: 600, show: false, backgroundColor: '#070b14', title: 'Clubhouse',
-    fullscreen: !!cfg.fullscreen, autoHideMenuBar: true, icon: exists(ICON) ? ICON : undefined,
+    x: start.x, y: start.y, width: start.width, height: start.height, minWidth: 960, minHeight: 600, show: false, backgroundColor: '#070b14', title: 'Clubhouse',
+    autoHideMenuBar: true, icon: exists(ICON) ? ICON : undefined,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true, backgroundThrottling: false }
   });
   Menu.setApplicationMenu(null);
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => { win.show(); place('launcher'); });
   // links in the arcade (Help, Suggestions) open in the normal browser
   win.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/i.test(url)) shell.openExternal(url); return { action: 'deny' }; });
   win.webContents.on('will-navigate', (e, url) => { const u = new URL(url); if (u.protocol !== 'file:' && u.hostname !== 'localhost' && u.hostname !== '127.0.0.1') { e.preventDefault(); shell.openExternal(url); } });
   win.webContents.on('before-input-event', (e, i) => {
     if (i.type !== 'keyDown') return;
-    if (i.key === 'F11') { e.preventDefault(); win.setFullScreen(!win.isFullScreen()); }
+    if (i.key === 'F11') { e.preventDefault(); choose(mode(), { full: !win.isFullScreen() }); }
+    if (i.key === 'F9') { e.preventDefault(); nextDisplay(); }
     if (i.key === 'F12' && i.control && i.shift) win.webContents.toggleDevTools();
     if (i.key === 'F10' && screen === 'arcade') { e.preventDefault(); goHome(); }   // back to the launcher from any arcade version
   });
+  // remember where a windowed window was put
+  const keep = () => { if (!win || win.isFullScreen() || win.isMinimized() || win.isMaximized()) return; clearTimeout(boundsTimer); boundsTimer = setTimeout(() => { if (!win || win.isFullScreen()) return; const b = win.getBounds(), d = Displays.getDisplayMatching(b), p = cfg.screens[mode()]; if (p.full) return; p.bounds = b; p.display = String(d.id); p.label = d.label || ''; saveCfg(); }, 600); };
+  win.on('moved', keep); win.on('resized', keep);
   win.webContents.on('render-process-gone', (e, d) => log('page stopped: ' + d.reason));
   win.on('closed', () => { win = null; });
   showLauncher();
@@ -168,7 +234,8 @@ async function state() {
     gspro: { path: gp, found: exists(gp), running: gsproRunning(set) },
     arcade: { path: cfg.arcade.path, found: exists(cfg.arcade.path) || !!findArcade(), version: cfg.arcade.version, running: set.has('clubhousearcade.exe') },
     names: [...set].filter(n => [...GSPRO_NAMES, ...cfg.gspro.start.map(exeName), ...cfg.arcade.start.map(exeName), ...cfg.gspro.close, ...cfg.arcade.close].map(exeName).includes(n)),
-    fullscreen: win ? win.isFullScreen() : cfg.fullscreen
+    fullscreen: win ? win.isFullScreen() : cfg.screens.launcher.full,
+    displays: displayList(), mainDisplay: String(Displays.getPrimaryDisplay().id)
   };
 }
 
@@ -178,7 +245,6 @@ ipcMain.handle('save', (e, c) => {
   cfg.gspro = { path: String(c.gspro.path || ''), start: clean(c.gspro.start), close: clean(c.gspro.close).map(exeName) };
   cfg.arcade = { path: String(c.arcade.path || ''), start: clean(c.arcade.start), close: clean(c.arcade.close).map(exeName), version: cfg.arcade.version };
   cfg.afterGSPro = ['minimize', 'quit', 'stay'].includes(c.afterGSPro) ? c.afterGSPro : 'minimize';
-  cfg.fullscreen = !!c.fullscreen; if (win && win.isFullScreen() !== cfg.fullscreen) win.setFullScreen(cfg.fullscreen);
   saveCfg(); return state();
 });
 ipcMain.handle('browse', async (e, what) => {
@@ -195,6 +261,13 @@ ipcMain.handle('browse', async (e, what) => {
 ipcMain.handle('find-gspro', () => findGSPro());
 ipcMain.handle('find-arcade', () => findArcade());
 ipcMain.handle('open-log', () => shell.openPath(LOG_FILE()));
+ipcMain.handle('set-screen', async (e, which, patch) => {
+  if (!['launcher', 'arcade'].includes(which)) return state();
+  const p = {}; if (patch && patch.display !== undefined) { const d = Displays.getAllDisplays().find(x => String(x.id) === String(patch.display)); p.display = d ? String(d.id) : ''; p.label = d ? d.label || '' : ''; p.bounds = null; }
+  if (patch && patch.full !== undefined) p.full = !!patch.full;
+  await choose(which, p); return state();
+});
+ipcMain.handle('identify', () => identify());
 
 ipcMain.handle('play-arcade', async (e, opts = {}) => {
   const steps = [];
@@ -208,7 +281,7 @@ ipcMain.handle('play-arcade', async (e, opts = {}) => {
   const s = await startPrograms(cfg.arcade.start); if (s.started.length) steps.push('Started ' + s.started.join(', '));
   cfg.last = 'arcade'; saveCfg(); screen = 'arcade';
   const url = 'http://localhost:' + r.port + '/?app=1';
-  setTimeout(() => { if (win && screen === 'arcade') win.loadURL(url); }, 350);
+  setTimeout(async () => { if (!win || screen !== 'arcade') return; await place('arcade'); win.loadURL(url); }, 350);
   return { ok: true, steps };
 });
 ipcMain.handle('play-gspro', async () => {
@@ -224,13 +297,15 @@ ipcMain.handle('play-gspro', async () => {
   setTimeout(() => { if (!win) return; if (cfg.afterGSPro === 'quit') app.quit(); else if (cfg.afterGSPro === 'minimize') win.minimize(); }, 2500);
   return { ok: true, steps };
 });
-async function goHome() { const was = screen === 'arcade'; screen = 'launcher'; if (win) { if (cfg.fullscreen && !win.isFullScreen()) win.setFullScreen(true); showLauncher(); } if (was) await stopArcade(); return true; }
+async function goHome() { const was = screen === 'arcade'; screen = 'launcher'; if (win) { showLauncher(); place('launcher'); } if (was) await stopArcade(); return true; }
 ipcMain.handle('home', () => goHome());
 ipcMain.handle('quit', () => app.quit());
-ipcMain.handle('toggle-full', () => { if (win) win.setFullScreen(!win.isFullScreen()); return win && win.isFullScreen(); });
+ipcMain.handle('toggle-full', async () => { if (win) await choose(mode(), { full: !win.isFullScreen() }); return win && win.isFullScreen(); });
 
 /* ---------------- app life ---------------- */
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.show(); win.focus(); } });
+// a screen unplugged or plugged in: put the window back where it belongs
+app.whenReady().then(() => { const re = () => setTimeout(() => place(), 800); Displays.on('display-removed', re); Displays.on('display-added', re); });
 app.whenReady().then(() => {
   try { fs.writeFileSync(LOG_FILE(), ''); } catch (e) { }
   log('Clubhouse ' + app.getVersion() + ' starting');

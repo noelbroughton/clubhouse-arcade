@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'">
+<title>Clubhouse</title>
+<link rel="stylesheet" href="launcher.css">
+</head>
+<body>
+<div class="bg" id="bg"></div><div class="bg2"></div>
+
+<header>
+  <div class="mark"><span class="ball"></span><span>CLUBHOUSE</span></div>
+  <div class="clock"><b id="time">--:--</b><span id="date"></span></div>
+</header>
+
+<main>
+  <div class="cards" id="cards">
+    <button class="card" id="c-arcade" data-k="arcade" type="button">
+      <div class="art" style="background-image:url(art/arcade.jpg)"></div>
+      <div class="shade"></div>
+      <div class="info">
+        <span class="chip" id="s-arcade">Ready</span>
+        <h1>Clubhouse Arcade</h1>
+        <p class="sub">Carnival, mini golf, clubhouse and sports games</p>
+        <p class="extra" id="x-arcade"></p>
+      </div>
+      <span class="play">Play</span>
+    </button>
+    <button class="card" id="c-gspro" data-k="gspro" type="button">
+      <div class="art" style="background-image:url(art/gspro.svg)"></div>
+      <div class="shade"></div>
+      <div class="info">
+        <span class="chip" id="s-gspro">Ready</span>
+        <h1>GSPro</h1>
+        <p class="sub">Full rounds, courses and your league</p>
+        <p class="extra" id="x-gspro"></p>
+      </div>
+      <span class="play">Play</span>
+    </button>
+  </div>
+  <p class="keys"><kbd>←</kbd><kbd>→</kbd> choose &nbsp; <kbd>Enter</kbd> play &nbsp; <kbd>S</kbd> settings &nbsp; <kbd>F11</kbd> full screen</p>
+</main>
+
+<footer>
+  <span class="ver" id="ver"></span>
+  <div class="actions">
+    <button class="btn" type="button" data-a="settings">Settings</button>
+    <button class="btn" type="button" data-a="full" id="b-full">Window</button>
+    <button class="btn" type="button" data-a="quit">Quit</button>
+  </div>
+</footer>
+
+<!-- progress / questions -->
+<div class="overlay" id="busy" hidden>
+  <div class="sheet small">
+    <div class="spin"></div>
+    <h2 id="busy-t">Starting</h2>
+    <ul id="busy-steps"></ul>
+  </div>
+</div>
+<div class="overlay" id="ask" hidden>
+  <div class="sheet small">
+    <h2 id="ask-t"></h2>
+    <p id="ask-p"></p>
+    <div class="row" id="ask-b"></div>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="overlay" id="settings" hidden>
+  <div class="sheet">
+    <div class="sh-head"><h2>Settings</h2><button class="btn" type="button" data-a="close">Close</button></div>
+    <div class="cols">
+      <section>
+        <h3>GSPro</h3>
+        <label class="lbl">GSPro program</label>
+        <div class="path" id="gp-path">Not set</div>
+        <div class="row"><button class="btn sm" type="button" data-a="gp-browse">Browse…</button><button class="btn sm" type="button" data-a="gp-find">Find automatically</button></div>
+        <p class="note">Usually <code>C:\GSProV1\GSPLauncher.exe</code>.</p>
+
+        <label class="lbl">Also start with GSPro</label>
+        <ul class="list" data-list="gspro.start"></ul>
+        <button class="btn sm" type="button" data-add="gspro.start">Add a program…</button>
+        <label class="lbl">Close these first</label>
+        <ul class="list" data-list="gspro.close"></ul>
+        <button class="btn sm" type="button" data-add="gspro.close">Add a program…</button>
+        <label class="lbl">When GSPro starts</label>
+        <div class="seg" data-seg="afterGSPro"><button type="button" data-v="minimize">Minimize this</button><button type="button" data-v="stay">Keep this open</button><button type="button" data-v="quit">Quit this</button></div>
+      </section>
+      <section>
+        <h3>Clubhouse Arcade</h3>
+        <label class="lbl">Also start with the arcade</label>
+        <ul class="list" data-list="arcade.start"></ul>
+        <button class="btn sm" type="button" data-add="arcade.start">Add a program…</button>
+        <label class="lbl">Close these first</label>
+        <ul class="list" data-list="arcade.close"></ul>
+        <button class="btn sm" type="button" data-add="arcade.close">Add a program…</button>
+        <label class="lbl">Screen</label>
+        <div class="seg" data-seg="fullscreen"><button type="button" data-v="true">Full screen</button><button type="button" data-v="false">Window</button></div>
+        <div class="tip">
+          <b>NeoTrack with Rela for the arcade, NeoTrack straight into GSPro:</b>
+          <ol>
+            <li>Arcade, <i>Also start</i>: <code>rela.exe</code>. Arcade, <i>Close first</i>: <code>NeoTrack.exe</code>.</li>
+            <li>GSPro, <i>Also start</i>: <code>NeoTrack.exe</code>. GSPro, <i>Close first</i>: <code>rela.exe</code>.</li>
+            <li>In Rela, set Simulator to GSPro, address <code>127.0.0.1</code>, port <code>9210</code>.</li>
+          </ol>
+          Only one program can use the NeoTrack cameras at a time.
+        </div>
+      </section>
+    </div>
+    <div class="sh-foot"><button class="btn link" type="button" data-a="log">Open log</button><span class="saved" id="saved"></span></div>
+  </div>
+</div>
+<script src="launcher.js"></script>
+</body>
+</html>

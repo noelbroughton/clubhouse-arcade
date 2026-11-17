@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1b2a55"/>
+      <stop offset=".45" stop-color="#6b4f8f"/>
+      <stop offset=".72" stop-color="#e88a5a"/>
+      <stop offset="1" stop-color="#ffd27a"/>
+    </linearGradient>
+    <radialGradient id="sun" cx=".5" cy=".5" r=".5">
+      <stop offset="0" stop-color="#fff6d8"/>
+      <stop offset=".35" stop-color="#ffd98a" stop-opacity=".9"/>
+      <stop offset="1" stop-color="#ffb35c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hillFar" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5c4a78"/><stop offset="1" stop-color="#3e3560"/></linearGradient>
+    <linearGradient id="hillMid" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f5a4a"/><stop offset="1" stop-color="#1f3f36"/></linearGradient>
+    <linearGradient id="rough" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2d6a3e"/><stop offset="1" stop-color="#123821"/></linearGradient>
+    <linearGradient id="fair" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8fd17a"/><stop offset="1" stop-color="#3f9a4c"/></linearGradient>
+    <linearGradient id="water" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6b779"/><stop offset="1" stop-color="#5a5b9a"/></linearGradient>
+    <pattern id="mow" width="90" height="800" patternUnits="userSpaceOnUse" patternTransform="skewX(-28)">
+      <rect width="45" height="800" fill="#ffffff" opacity=".07"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="800" fill="url(#sky)"/>
+  <circle cx="820" cy="430" r="190" fill="url(#sun)"/>
+  <circle cx="820" cy="430" r="46" fill="#fff4cf"/>
+  <path d="M0 470 C160 420 300 440 430 410 S700 380 860 420 1100 400 1200 430 V800 H0Z" fill="url(#hillFar)"/>
+  <path d="M0 520 C200 470 360 500 520 470 S820 450 980 480 1150 470 1200 480 V800 H0Z" fill="url(#hillMid)"/>
+  <g fill="#14281f">
+    <path d="M70 520 l28-110 28 110z"/><path d="M110 525 l34-140 34 140z"/><path d="M160 522 l24-90 24 90z"/>
+    <path d="M1010 500 l30-120 30 120z"/><path d="M1055 505 l26-96 26 96z"/><path d="M1090 503 l34-136 34 136z"/>
+  </g>
+  <path d="M0 560 C240 520 520 540 760 520 S1080 520 1200 530 V800 H0Z" fill="url(#rough)"/>
+  <path d="M640 548 C760 540 900 545 990 556 C930 570 780 572 660 566Z" fill="url(#water)" opacity=".9"/>
+  <path d="M170 800 C300 700 460 640 600 600 C700 572 790 560 860 556 C920 560 930 572 880 584 C780 610 700 650 640 700 C590 740 560 780 552 800Z" fill="url(#fair)"/>
+  <path d="M170 800 C300 700 460 640 600 600 C700 572 790 560 860 556 C920 560 930 572 880 584 C780 610 700 650 640 700 C590 740 560 780 552 800Z" fill="url(#mow)"/>
+  <ellipse cx="842" cy="560" rx="78" ry="16" fill="#a8e38a"/>
+  <ellipse cx="796" cy="574" rx="40" ry="8" fill="#f1dca4" opacity=".95"/>
+  <line x1="862" y1="560" x2="862" y2="470" stroke="#f4f4f4" stroke-width="3"/>
+  <path d="M862 471 l40 12 -40 12z" fill="#ff4a4a"/>
+  <ellipse cx="862" cy="561" rx="6" ry="2" fill="#0d2414"/>
+  <g opacity=".85">
+    <path d="M330 760 q260-330 528-205" fill="none" stroke="#fffbe6" stroke-width="3" stroke-dasharray="2 12" stroke-linecap="round"/>
+  </g>
+  <circle cx="330" cy="762" r="9" fill="#ffffff"/>
+</svg>
